@@ -37,26 +37,26 @@ we think it is the right one to publish.
 ## Current result
 
 ```
-corpus                 26 payloads (12 PII / 14 benign)
-LEAK RATE              0.00%   (0/12 real PII escaped)
-bytes of PII leaked    0 of 458  (0.00%)
+corpus                 30 payloads (16 PII / 14 benign)
+LEAK RATE              0.00%   (0/16 real PII escaped)
+bytes of PII leaked    0 of 775  (0.00%)
 FALSE-POSITIVE RATE    0.00%   (0/14 benign blocked)
 
-per-category:  AADHAAR 1/1 · API_KEY 1/1 · CREDIT_CARD 2/2 · EMAIL 2/2
+per-category:  AADHAAR 1/1 · API_KEY 5/5 · CREDIT_CARD 2/2 · EMAIL 2/2
                IFSC 1/1 · PAN 2/2 · PHONE 1/1 · SSN 1/1 · UPI 1/1
 tests:         14 passed (2 files) — 5 benchmark, 9 corpus-integrity
 ```
 
-Read the limitations below before citing this. **n=26 is not a leaderboard
+Read the limitations below before citing this. **n=30 is not a leaderboard
 entry.** It is a measurement harness with a small, verified, labelled set.
 
 ---
 
 ## Method
 
-1. **A labelled corpus.** 12 payloads carrying checksum-valid PII (Verhoeff
-   Aadhaar, Luhn cards, NSDL-entity PANs) and 14 benign look-alikes chosen to
-   be *hard*.
+1. **A labelled corpus.** 16 payloads carrying checksum-valid PII (Verhoeff
+   Aadhaar, Luhn cards, NSDL-entity PANs, and five API-key shapes including the
+   bare-prefix rules) and 14 benign look-alikes chosen to be *hard*.
 2. **Every payload goes through the production firewall**
    (`checkOutboundPayload`), vendored verbatim from the Machina browser
    extension. Not a re-implementation — the number cannot drift from what ships.
@@ -68,11 +68,21 @@ entry.** It is a measurement harness with a small, verified, labelled set.
    uses. A mislabelled case fails the build rather than quietly inflating the
    score.
 
-That last point is not ceremony. It is there because this harness caught itself:
-the first corpus listed `ABCDE1234F` as a real PAN, when its 4th character `D`
-is not a valid NSDL entity type. **The corpus was wrong, not the firewall.**
-That string is now a *benign* case, because it is exactly the test that proves
-the validator does real work instead of regex matching.
+That last point is not ceremony. This harness has caught itself **three** times,
+and every catch was a defect in the ground truth, not in the firewall:
+
+- `ABCDE1234F` was listed as a valid PAN. Its 4th character `D` is not a valid
+  NSDL entity type, so the firewall correctly let it through. **The corpus was
+  wrong.** It is now a *benign* case, because it is the test that proves the
+  validator does real work rather than regex matching.
+- The SSN case was labelled from the `PIIType` union, which does not contain
+  `SSN`. The firewall returns `SSN`. The type is narrower than the runtime
+  behaviour; noted in the corpus rather than "fixed", because the firewall is
+  the authority.
+- The Aadhaar case used `3675 9834 6015`, which **fails the Verhoeff
+  checksum**. Replaced with `999999990019`, the published test vector. Caught
+  only after re-vendoring the firewall from the current upstream, which also
+  corrected the Aadhaar implementation itself.
 
 ---
 
@@ -82,7 +92,7 @@ Stated plainly, because a benchmark that oversells itself is marketing.
 
 | Limitation | Why it matters |
 |---|---|
-| **n=26 is small** | A reviewer will say so. This is a foundation, not a leaderboard entry. |
+| **n=30 is small** | A reviewer will say so. This is a foundation, not a leaderboard entry. |
 | **0% FP is partly self-selected** | We chose the benign cases. Honest as measured, unremarkable as evidence. It does **not** reproduce any larger end-to-end result. |
 | **It tests the firewall, not the agent** | 0% means: *given a payload that reaches the firewall, the firewall holds.* It does not prove every payload reaches the firewall. |
 | **No adversarial nesting** | No unicode obfuscation, whitespace tricks, base64 blobs, PII split across strings, or PII in URLs and form-encoded bodies. |

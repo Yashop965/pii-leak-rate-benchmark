@@ -21,8 +21,10 @@ export interface Case {
 
 export const TRUE_PII: Case[] = [
   { id: 'aadhaar-valid', isPII: true, category: 'AADHAAR',
-    note: 'Verhoeff checksum passes. Verified against the vendored validator.',
-    payload: { form: { aadhaar: '3675 9834 6015' } } },
+    note: 'Verhoeff checksum passes. 999999990019 is the published test vector. ' +
+          'Found by the corpus-integrity test: the first value used here ' +
+          '(3675 9834 6015) is NOT a valid Aadhaar, so the label was wrong.',
+    payload: { form: { aadhaar: '999999990019' } } },
   { id: 'pan-entity', isPII: true, category: 'PAN',
     note: '4th char P = individual, a valid NSDL entity type.',
     payload: { kyc: { pan: 'ABCPE1234F' } } },
@@ -45,7 +47,21 @@ export const TRUE_PII: Case[] = [
           'corpus to match the type, the firewall is the authority here.',
     payload: { tax: { ssn: '123-45-6789' } } },
   { id: 'api-key-assignment', isPII: true, category: 'API_KEY',
+    note: 'Label:value form, matched by the assignment rule.',
     payload: { config: 'api_key=«redacted:sk-…»' } },
+  // The assignment rule above needs a real-looking value to bite on. These are
+  // the bare-prefix rules added in #164 (fix: close two fail-open paths). They
+  // are matched by prefix alone, with no key=value around them - which is
+  // exactly why they are separate patterns and why dropping them is dangerous.
+  { id: 'api-key-openai-prefix', isPII: true, category: 'API_KEY',
+    note: 'Bare sk- prefix, no assignment. Requires the #164 prefix rule.',
+    payload: { note: 'found token sk-abcdefghij0123456789ABCD in the page source' } },
+  { id: 'api-key-aws-access-key-id', isPII: true, category: 'API_KEY',
+    payload: { note: 'config contained AKIAIOSFODNN7EXAMPLE inline' } },
+  { id: 'api-key-github-pat', isPII: true, category: 'API_KEY',
+    payload: { note: 'leaked ghp_abcdefghijklmnopqrstuvwxyz0123456789 in a log' } },
+  { id: 'api-key-jwt', isPII: true, category: 'API_KEY',
+    payload: { header: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U' } },
   { id: 'nested-array-deep', isPII: true, category: 'EMAIL',
     note: 'Deep recursion — the walker must descend, not just read the top level.',
     payload: { a: { b: { c: { d: ['ok', 'ok', 'leak@target.com'] } } } } },
