@@ -1,0 +1,16 @@
+{
+  "name": "pii-leak-rate-benchmark",
+  "version": "0.1.0",
+  "private": false,
+  "description": "A benchmark for one number browser-agent vendors do not publish: how many bytes of real PII escape the machine during a typical run.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "bench": "vitest run --reporter=verbose",
+    "bench:json": "vitest run --reporter=json --outputFile=results.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
